@@ -29,7 +29,7 @@ services:
     networks:
       net_frontend:
       net_backend:
-    stop_grace_period: 30s
+    stop_grace_period: 5s
 
 
   tornado-server:
@@ -55,7 +55,7 @@ services:
     networks:
       net_frontend:
       net_backend:
-    stop_grace_period: 30s
+    stop_grace_period: 5s
     command: ["bash", "-c", "/wait_for_redis.sh redis-server:6379 && python hello.py"]
 
 
