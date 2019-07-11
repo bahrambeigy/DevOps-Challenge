@@ -1,0 +1,286 @@
+########### NameSpace Section ########
+apiVersion: v1  
+kind: Namespace  
+metadata:  
+  name: tradebyte-ns
+---
+########### Services Section #########
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-server
+  namespace: tradebyte-ns
+  labels:
+    app: nginx-server
+    tier: front
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 31000
+  selector:
+    app: nginx-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tornado-server
+  namespace: tradebyte-ns
+  labels:
+    app: tornado-server
+    tier: back
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+  selector:
+    app: tornado-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-server
+  namespace: tradebyte-ns
+  labels:
+    app: redis-server
+    tier: back
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis-server
+---
+############## Config Maps Section ################
+kind: ConfigMap  
+apiVersion: v1  
+metadata:  
+  name: nginx-config
+  namespace: tradebyte-ns
+  labels:  
+    app: nginx-server
+    tier: front
+data:  
+  default.conf: |  
+    upstream tornado_backend {
+        server tornado-server:8000;
+    }
+    
+
+    server {
+        listen       80;
+        server_name  _;
+    
+        #access_log  /var/log/nginx/host.access.log  main;
+
+        location / {
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-NginX-Proxy true;
+        
+            proxy_pass http://tornado_backend;
+            proxy_redirect off;
+        }
+        
+        location /static {
+            rewrite ^/static/?(.*) /$1 break;
+            root /srv/;
+        }
+    
+        #error_page  404              /404.html;
+    
+        # redirect server error pages to the static page /50x.html
+        #
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+---
+kind: ConfigMap  
+apiVersion: v1  
+metadata:  
+  name: redis-config
+  namespace: tradebyte-ns
+  labels:  
+    app: redis-server
+    tier: back
+data:  
+  redis.conf: |  
+    daemonize no
+    pidfile /var/run/redis/redis-server.pid
+    port 6379
+    bind 0.0.0.0
+    timeout 0
+    tcp-keepalive 0
+    loglevel notice
+    databases 16
+    dir /data
+    dbfilename dump.rdb
+    appendonly yes
+
+---
+############## Deployments Section ################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-server
+  namespace: tradebyte-ns
+  labels:
+    app: nginx-server
+    tier: front
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  selector:
+    matchLabels:
+      app: nginx-server
+      tier: front
+  template:
+    metadata:
+      labels:
+        app: nginx-server
+        tier: front
+    spec:
+      containers:
+      - name: nginx-server
+        imagePullPolicy: IfNotPresent
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:  
+          limits:  
+            cpu: 200m  
+            memory: 512Mi  
+          requests:  
+            cpu: 100m  
+            memory: 128Mi  
+        volumeMounts:  
+          - readOnly: true  
+            mountPath: /etc/nginx/conf.d/
+            name: nginx-config
+        #readinessProbe:
+        #  httpGet:
+        #     path: /
+        #     port: 80
+        #  initialDelaySeconds: 5
+        #  periodSeconds: 5
+        #  successThreshold: 1
+      volumes:  
+        - name: nginx-config
+          configMap:  
+            name: nginx-config
+            items:
+            - key: default.conf
+              path: default.conf
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tornado-server
+  namespace: tradebyte-ns
+  labels:
+    app: tornado-server
+    tier: back
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+  selector:
+    matchLabels:
+      app: tornado-server
+      tier: back
+  template:
+    metadata:
+      labels:
+        app: tornado-server
+        tier: back
+    spec:
+      containers:
+      - name: tornado-server
+        imagePullPolicy: IfNotPresent
+        image: tornado-server:latest
+        env:
+        - name: ENVIRONMENT
+          value: 'PROD'
+        - name: HOST
+          value: '0.0.0.0'
+        - name: REDIS_HOST
+          value: 'redis-server'
+        - name: REDIS_PORT
+          value: '6379'
+        - name: REDIS_DB
+          value: 0
+        ports:
+        - containerPort: 8000
+        resources:  
+          limits:  
+            cpu: 200m  
+            memory: 512Mi  
+          requests:  
+            cpu: 100m  
+            memory: 128Mi  
+        #readinessProbe:
+        #  httpGet:
+        #     path: /
+        #     port: 5000
+        #  initialDelaySeconds: 5
+        #  periodSeconds: 5
+        #  successThreshold: 1
+        command: ["sh", "-c", "/wait_for_redis.sh redis-server:6379 && python hello.py"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-server
+  namespace: tradebyte-ns
+  labels:
+    app: redis-server
+    tier: back
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-server
+      tier: back
+  template:
+    metadata:
+      labels:
+        app: redis-server
+        tier: back
+    spec:
+      containers:
+      - name: redis-server
+        imagePullPolicy: IfNotPresent
+        image: redis:4-alpine
+        resources:  
+          limits:  
+            cpu: 200m  
+            memory: 512Gi  
+          requests:  
+            cpu: 100m  
+            memory: 256Mi  
+        volumeMounts:
+        - mountPath: /etc/redis.conf
+          readOnly: true
+          name: vol-redis-config
+        - mountPath: /data
+          name: vol-redis-data
+      volumes:
+        - name: vol-redis-config
+          configMap:
+            name: redis-config
+            items:
+            - key: redis.conf
+              path: redis.conf
+        - name: vol-redis-data
+          emptyDir: {}
