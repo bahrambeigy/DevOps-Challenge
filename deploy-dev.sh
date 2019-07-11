@@ -4,8 +4,8 @@ sudo -i
 cd /srv/dev
 git pull --rebase
 
-docker-compose build
+docker-compose build tornado-server
 
-docker-compose stop --timeout 10
+docker-compose stop tornado-server
 
 docker-compose up -d

@@ -17,7 +17,7 @@ DOCKER_BIN="`which docker`"
 
 
 #### Building local docker image
-$DOCKER_BIN build tornado-server -t tornado-server:latest
+$DOCKER_BIN build . -t tornado-server:latest
 
 
 ### Deploy on k8s

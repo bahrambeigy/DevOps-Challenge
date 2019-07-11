@@ -38,6 +38,7 @@ services:
     environment:
     - ENVIRONMENT=DEV
     - HOST=0.0.0.0
+    - PORT=8000
     - REDIS_HOST=redis-server
     - REDIS_PORT=6379
     - REDIS_DB=0
@@ -82,8 +83,6 @@ networks:
       com.docker.network.enable_ipv6: "false"
     ipam:
       driver: default
-      config:
-      - subnet: 172.16.11.0/29
 
   net_backend:
     driver: bridge
@@ -92,8 +91,6 @@ networks:
     internal: true
     ipam:
       driver: default
-      config:
-      - subnet: 172.16.11.8/29
 
 ### Volumes
 
