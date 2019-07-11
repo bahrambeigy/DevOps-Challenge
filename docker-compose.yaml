@@ -3,7 +3,6 @@ version: '3.5'
 services:
 
   nginx-server:
-    container_name: tradebyte-nginx-server
     image: nginx:alpine
     ports:
     - "8001:80"
@@ -33,7 +32,6 @@ services:
 
 
   tornado-server:
-    container_name: tradebyte-tornado-server
     build: .
     environment:
     - ENVIRONMENT=DEV
@@ -61,7 +59,6 @@ services:
 
 
   redis-server:
-    container_name: tradebyte-redis-server
     image: redis:5-alpine
     volumes:
     - db-redis:/data:rw
