@@ -6,7 +6,7 @@ services:
     container_name: tradebyte-nginx-server
     image: nginx:alpine
     ports:
-    - "8000:80"
+    - "8001:80"
     volumes:
     - ./docker/default.conf:/etc/nginx/conf.d/default.conf:ro
     - ./static:/srv:ro
@@ -36,7 +36,7 @@ services:
     container_name: tradebyte-tornado-server
     build: .
     environment:
-    - ENVIRONMENT=PROD
+    - ENVIRONMENT=DEV
     - HOST=0.0.0.0
     - PORT=8000
     - REDIS_HOST=redis-server
