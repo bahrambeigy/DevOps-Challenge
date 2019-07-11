@@ -23,11 +23,11 @@ after_success:
 deploy:
   - provider: script
     skip_cleanup: true
-    script: ENVIRONMENT=PROD ssh -o StrictHostKeyChecking=no -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy-prod.sh
+    script: ENVIRONMENT=PROD ssh -o StrictHostKeyChecking=no -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy/deploy-prod.sh
     on:
       branch: master
   - provider: script
     skip_cleanup: true
-    script: ENVIRONMENT=DEV ssh -o StrictHostKeyChecking=no -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy-dev.sh
+    script: ENVIRONMENT=DEV ssh -o StrictHostKeyChecking=no -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy/deploy-dev.sh
     on:
       branch: DEV
