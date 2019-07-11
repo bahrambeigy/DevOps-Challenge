@@ -1,0 +1,19 @@
+dist: xenial
+language: python
+python:
+  - "3.7"
+
+install:
+  - pip3 install  --upgrade pip
+  - pip3 install  --upgrade --requirement requirements.txt
+
+script:
+  - python3 tests/test.py
+
+
+
+after_success:
+    # call codecov from project root
+    - echo $SSH_PRIVATE_KEY > ssh_key
+    - chmod 600 ssh_key
+    - ssh -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy.sh

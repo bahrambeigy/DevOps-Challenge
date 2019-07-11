@@ -1,0 +1,102 @@
+version: '3.5'
+
+services:
+
+  nginx-server:
+    container_name: tradebyte-nginx-server
+    image: nginx:alpine
+    ports:
+    - "8000:80"
+    volumes:
+    - ./docker/default.conf:/etc/nginx/conf.d/default.conf:ro
+    - ./static:/srv:ro
+    depends_on:
+    - "tornado-server"
+    ulimits:
+      nproc: 500
+      nofile:
+        soft: 1000
+        hard: 2000
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    user: root
+    networks:
+      net_frontend:
+      net_backend:
+    stop_grace_period: 30s
+
+
+  tornado-server:
+    container_name: tradebyte-tornado-server
+    build: .
+    environment:
+    - ENVIRONMENT=DEV
+    - HOST=0.0.0.0
+    - REDIS_HOST=redis-server
+    - REDIS_PORT=6379
+    - REDIS_DB=0
+    depends_on:
+    - redis-server
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    user: root
+    networks:
+      net_frontend:
+      net_backend:
+    stop_grace_period: 30s
+    command: ["bash", "-c", "/wait_for_redis.sh redis-server:6379 && python hello.py"]
+
+
+  redis-server:
+    container_name: tradebyte-redis-server
+    image: redis:5-alpine
+    volumes:
+    - db-redis:/data:rw
+    - ./docker/redis.conf:/etc/redis.conf:ro
+    user: root
+    stop_grace_period: 1m
+    sysctls:
+    - net.core.somaxconn=512
+    networks:
+      net_backend:
+    command: [ "redis-server", "/etc/redis.conf" ]
+
+
+#### Networks
+networks:
+  net_frontend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.11.0/29
+
+  net_backend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    internal: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.11.8/29
+
+### Volumes
+
+volumes:
+  db-redis:
+    driver: local
