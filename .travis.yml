@@ -14,5 +14,7 @@ script:
 
 after_success:
     - echo $SSH_PRIVATE_KEY | base64 -d > ssh_key
-    - chmod 400 ssh_key
+    - eval "$(ssh-agent -s)"
+    - chmod 600 ssh_key
+    - ssh-add ssh_key
     - ssh -o StrictHostKeyChecking=no -i ssh_key $USER@$SERVER -p $PORT 'bash -s' < deploy.sh
